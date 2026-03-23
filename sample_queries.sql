@@ -1,11 +1,3 @@
-SELECT 
-  SUM(Total_trips) AS total_trips,
-  SUM(Total_revenue) AS total_revenue,
-  AVG(average_dist) AS avg_trip_distance
-FROM `de-way-forward.nyc_taxi.trips`;
-
-
-
 1. Daily Trips Trend
 SELECT 
   trip_date,
