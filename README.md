@@ -1,47 +1,6 @@
-# NYC Taxi Data Pipeline on GCP
+## NYC Taxi Data Pipeline on GCP ![Python](https://img.shields.io/badge/python-3.10-blue) ![GCP](https://img.shields.io/badge/GCP-cloud-green)
 
-## Problem Statement
-Process large-scale NYC Taxi trip data and transform it into analytics-ready datasets for business insights.
-
-## Architecture
-Dataproc (PySpark)
-↓
-GCS (Storage)
-↓
-BigQuery (Analytics)
-
-## Tech Stack
-- Google Cloud Dataproc (PySpark)
-- Google Cloud Storage (GCS)
-- BigQuery
-- Python (PySpark)
-
-## Pipeline Steps
-1. Upload raw data to GCS
-2. Run PySpark job on Dataproc
-3. Transform data (cleaning, filtering, aggregations)
-4. Store processed data in GCS
-5. Load into BigQuery
-
-## PySpark Script
-File: `nyc_taxi_pipeline.py`
-
-- Includes data transformations, filtering, and aggregation
-- Clean and well-commented for readability
-
-## Supporting Scripts
-- `dataproc_job_submission.sh` — CLI command to run PySpark job on Dataproc  
-- `sample_queries.sql` — Example BigQuery queries for analysis
-
-## Sample Queries / Results
-```sql
-SELECT passenger_count, COUNT(*) 
-FROM nyc_dataset.taxi_data
-GROUP BY passenger_count;
-
-
-
-# NYC Taxi Data Pipeline on GCP ![Python](https://img.shields.io/badge/python-3.10-blue) ![GCP](https://img.shields.io/badge/GCP-cloud-green)
+> End-to-end data pipeline built on GCP using PySpark for large-scale data processing and analytics.
 
 ## Table of Contents
 1. [Problem Statement](#problem-statement)
@@ -50,11 +9,10 @@ GROUP BY passenger_count;
 4. [Pipeline Steps](#pipeline-steps)
 5. [PySpark Script](#pyspark-script)
 6. [Supporting Scripts](#supporting-scripts)
-7. [Sample Queries / Results](#sample-queries--results)
-8. [Key Outcomes](#key-outcomes)
-9. [Future Improvements](#future-improvements)
-10.[Assets](#assets)
-11.[How to Run](#how-to-run)
+7. [Key Outcomes](#key-outcomes)
+8. [Future Improvements](#future-improvements)
+9. [Assets](#assets)
+10. [How To Run](#how-to-run)
 
 ---
 
@@ -64,17 +22,15 @@ Process large-scale NYC Taxi trip data and transform it into analytics-ready dat
 ---
 
 ## Architecture
+```
 Raw Data (GCS)
-│
-▼
-Dataproc (PySpark) ──> Transformations (cleaning, filtering, aggregations)
-│
-▼
+   ↓
+Dataproc (PySpark) → Transformations
+   ↓
 Processed Data (GCS)
-│
-▼
+   ↓
 BigQuery (Analytics & Dashboarding)
-
+```
 
 ---
 
@@ -100,17 +56,65 @@ File: `nyc_taxi_job.py`
 
 - Includes all data transformations, filtering, and aggregation
 - Clean, well-commented, and modular for readability
-- Example snippet:
+- Example transformation snippets (full logic available in `nyc_taxi_job.py`):
 
-python
-# Load CSV from GCS
-df = spark.read.csv("gs://nyx-taxi-data/raw_data/*.csv", header=True, inferSchema=True)
+```python
+from pyspark.sql.functions import col, to_date
 
-# Filter trips with passenger_count > 0
-df_filtered = df.filter(df.passenger_count > 0)
+# Load data from GCS
+df = spark.read.parquet("gs://de-nyx-taxi-newton/raw_data/")
 
-# Aggregate fare per day
-df_agg = df_filtered.groupBy("pickup_date").sum("fare_amount")
+# Filter valid trips
+df_clean = df.filter(
+    (col("trip_distance") > 0) & 
+    (col("fare_amount") > 0)
+)
 
-# Save to GCS
-df_agg.write.csv("gs://nyx-taxi-data/processed/")
+# Business logic example
+df_clean = df_clean.withColumn(
+    "trip_date",
+    to_date(col("tpep_pickup_datetime"))
+)
+
+# Write processed data to BigQuery
+df_agg.write \
+      .format("bigquery") \
+      .option("table", "de-way-forward.nyc_taxi.trips") \
+      .option("temporaryGcsBucket", "de-nyx-taxi-newton") \
+      .mode("overwrite") \
+      .save()
+```
+---
+
+## Supporting Scripts
+- `dataproc_job_submission.sh` — CLI command to run PySpark job on Dataproc  
+- `sample_queries.sql` — Example BigQuery queries for analysis
+
+---
+
+## Key Outcomes
+- Processed ~1GB+ NYC Taxi dataset efficiently using PySpark
+- Built scalable, analytics-ready datasets in BigQuery
+- Demonstrated cloud-native ETL workflow using Dataproc and GCS
+- Project ready for automation with Airflow or Cloud Functions
+
+---
+
+## Future Improvements
+- Automate workflow using Apache Airflow or Cloud Functions
+- Implement scheduled runs via Cloud Scheduler
+- Add logging, monitoring, and retry mechanisms
+
+---
+
+## Assets
+- NYC Taxi dataset source: https://www.nyc.gov/site/tlc/about/tlc-trip-record-data.page
+
+---
+
+## How to Run
+1. Upload raw NYC Taxi dataset to GCS
+2. Submit PySpark job using Dataproc
+3. Processed data is written back to GCS
+4. Load processed data into BigQuery
+5. Run analytical queries in BigQuery
